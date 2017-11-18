@@ -6,7 +6,7 @@ services:
     environment:
       - "cluster.name=elk"
       - "bootstrap.memory_lock=false"
-      - "ES_JAVA_OPTS=-Xms1024m -Xmx1024m"
+      - "ES_JAVA_OPTS=-Xms2G -Xmx2G"
       - "network.host=10.156.0.5"
       - "discovery.zen.ping.unicast.hosts=10.156.0.5,10.156.0.3,10.156.0.4"
       - "LOGSPOUT=ignore"
@@ -21,11 +21,10 @@ services:
       restart_policy:
         condition: on-failure
         delay: 10s
-        max_attempts: 5
         window: 120s
       resources:
         limits:
-          memory: 2560M
+          memory: 3G
         reservations:
           memory: 512M
       placement:
@@ -37,7 +36,7 @@ services:
     environment:
       - "cluster.name=elk"
       - "bootstrap.memory_lock=false"
-      - "ES_JAVA_OPTS=-Xms1024m -Xmx1024m"
+      - "ES_JAVA_OPTS=-Xms2G -Xmx2G"
       - "network.host=10.156.0.3"
       - "discovery.zen.ping.unicast.hosts=10.156.0.5,10.156.0.3,10.156.0.4"
       - "LOGSPOUT=ignore"
@@ -52,11 +51,10 @@ services:
       restart_policy:
         condition: on-failure
         delay: 10s
-        max_attempts: 5
         window: 120s
       resources:
         limits:
-          memory: 2560M
+          memory: 3G
         reservations:
           memory: 512M
       placement:
@@ -68,7 +66,7 @@ services:
     environment:
       - "cluster.name=elk"
       - "bootstrap.memory_lock=false"
-      - "ES_JAVA_OPTS=-Xms1024m -Xmx1024m"
+      - "ES_JAVA_OPTS=-Xms2G -Xmx2G"
       - "network.host=10.156.0.4"
       - "discovery.zen.ping.unicast.hosts=10.156.0.5,10.156.0.3,10.156.0.4"
       - "LOGSPOUT=ignore"
@@ -83,11 +81,10 @@ services:
       restart_policy:
         condition: on-failure
         delay: 10s
-        max_attempts: 5
         window: 120s
       resources:
         limits:
-          memory: 2560M
+          memory: 3G
         reservations:
           memory: 512M
       placement:
@@ -107,13 +104,12 @@ services:
       restart_policy:
         condition: on-failure
         delay: 10s
-        max_attempts: 5
         window: 120s
       resources:
         limits:
-          memory: 2048M
+          memory: 1024M
         reservations:
-          memory: 256M
+          memory: 128M
       placement:
         constraints:
           - 'node.hostname==swarm-worker-3'
@@ -136,13 +132,12 @@ services:
       restart_policy:
         condition: on-failure
         delay: 10s
-        max_attempts: 5
         window: 120s
       resources:
         limits:
-          memory: 2048M
+          memory: 2G
         reservations:
-          memory: 256M
+          memory: 1G
 
   logspout:
     image: stefanprodan/swarm-logspout-logstash
@@ -151,6 +146,7 @@ services:
       - "LOGSPOUT=ignore"
       - "HTTP_PORT=55444"
       - "DOCKER_LABELS=on"
+      - "RETRY_STARTUP=on"
     volumes:
       - /etc/hostname:/etc/host_hostname:ro
       - /var/run/docker.sock:/var/run/docker.sock
@@ -161,13 +157,32 @@ services:
       restart_policy:
         condition: on-failure
         delay: 10s
-        window: 5s
+        window: 120s
       resources:
         limits:
-          cpuset-cpus: 0
-          memory: 512M
+          memory: 1024M
         reservations:
           memory: 128M
+
+  curator:
+    image: stefanprodan/es-curator-cron
+    command: "--host 10.156.0.5 --port 9200 delete_indices --ignore_empty_list --filter_list \'[{\"filtertype\":\"age\",\"source\":\"name\",\"direction\":\"older\",\"unit\":\"days\",\"unit_count\":1,\"timestring\": \"%Y.%m.%d\"},{\"filtertype\":\"pattern\",\"kind\":\"prefix\",\"value\":\"logstash\"}]\'"
+    networks:
+      - net
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        window: 120s
+      resources:
+        limits:
+          memory: 1024M
+        reservations:
+          memory: 64M
+      placement:
+        constraints:
+          - 'node.hostname==swarm-worker-3'
+
 networks:
   host-net:
     external:
