@@ -145,7 +145,7 @@ services:
           memory: 256M
 
   logspout:
-    image: bekt/logspout-logstash
+    image: stefanprodan/swarm-logspout-logstash
     environment:
       - "ROUTE_URIS=logstash+tcp://localhost:50005"
       - "LOGSPOUT=ignore"
@@ -161,10 +161,10 @@ services:
       restart_policy:
         condition: on-failure
         delay: 10s
-        max_attempts: 5
-        window: 120s
+        window: 5s
       resources:
         limits:
+          cpuset-cpus: 0
           memory: 512M
         reservations:
           memory: 128M
