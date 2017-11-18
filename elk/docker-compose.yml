@@ -17,6 +17,9 @@ services:
         hard: -1
     networks:
       - host-net
+    expose:
+      - 9200
+      - 9300
     deploy:
       restart_policy:
         condition: on-failure
@@ -91,10 +94,43 @@ services:
         constraints:
           - 'node.hostname==swarm-worker-3'
 
+  es-router:
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:6.0.0
+    environment:
+      - "cluster.name=elk"
+      - "node.master=false"
+      - "node.data=false"
+      - "node.ingest=false"
+      - "bootstrap.memory_lock=false"
+      - "ES_JAVA_OPTS=-Xms1G -Xmx1G"
+      - "network.host=10.156.0.2"
+      - "discovery.zen.ping.unicast.hosts=10.156.0.5,10.156.0.3,10.156.0.4"
+      - "LOGSPOUT=ignore"
+    pid: "host"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - host-net
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        window: 120s
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+      placement:
+        constraints:
+          - 'node.hostname==swarm-manager-1'
+
   kibana:
     image: docker.elastic.co/kibana/kibana-oss:6.0.0
     environment:
-      - "ELASTICSEARCH_URL=http://10.156.0.5:9200"
+      - "ELASTICSEARCH_URL=http://10.156.0.2:9200"
       - "LOGSPOUT=ignore"
     networks:
       - net
