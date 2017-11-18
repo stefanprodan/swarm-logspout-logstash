@@ -1,0 +1,182 @@
+version: "3.3"
+
+services:
+  es1:
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:6.0.0
+    environment:
+      - "cluster.name=elk"
+      - "bootstrap.memory_lock=false"
+      - "ES_JAVA_OPTS=-Xms1024m -Xmx1024m"
+      - "network.host=10.156.0.5"
+      - "discovery.zen.ping.unicast.hosts=10.156.0.5,10.156.0.3,10.156.0.4"
+      - "LOGSPOUT=ignore"
+    pid: "host"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - host-net
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      resources:
+        limits:
+          memory: 2560M
+        reservations:
+          memory: 512M
+      placement:
+        constraints:
+          - 'node.hostname==swarm-worker-1'
+
+  es2:
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:6.0.0
+    environment:
+      - "cluster.name=elk"
+      - "bootstrap.memory_lock=false"
+      - "ES_JAVA_OPTS=-Xms1024m -Xmx1024m"
+      - "network.host=10.156.0.3"
+      - "discovery.zen.ping.unicast.hosts=10.156.0.5,10.156.0.3,10.156.0.4"
+      - "LOGSPOUT=ignore"
+    pid: "host"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - host-net
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      resources:
+        limits:
+          memory: 2560M
+        reservations:
+          memory: 512M
+      placement:
+        constraints:
+          - 'node.hostname==swarm-worker-2'
+
+  es3:
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:6.0.0
+    environment:
+      - "cluster.name=elk"
+      - "bootstrap.memory_lock=false"
+      - "ES_JAVA_OPTS=-Xms1024m -Xmx1024m"
+      - "network.host=10.156.0.4"
+      - "discovery.zen.ping.unicast.hosts=10.156.0.5,10.156.0.3,10.156.0.4"
+      - "LOGSPOUT=ignore"
+    pid: "host"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - host-net
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      resources:
+        limits:
+          memory: 2560M
+        reservations:
+          memory: 512M
+      placement:
+        constraints:
+          - 'node.hostname==swarm-worker-3'
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana-oss:6.0.0
+    environment:
+      - "ELASTICSEARCH_URL=http://10.156.0.5:9200"
+      - "LOGSPOUT=ignore"
+    networks:
+      - net
+    ports:
+      - 5601:5601
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      resources:
+        limits:
+          memory: 2048M
+        reservations:
+          memory: 256M
+      placement:
+        constraints:
+          - 'node.hostname==swarm-worker-3'
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash-oss:6.0.0
+    configs:
+      - source: logstash_config
+        target: /usr/share/logstash/config/logstash.yml
+      - source: logstash_pipeline
+        target: /usr/share/logstash/pipeline/logstash.conf
+    environment:
+      - "LOGSPOUT=ignore"
+    networks:
+      - host-net
+    expose:
+      - 5000
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      resources:
+        limits:
+          memory: 2048M
+        reservations:
+          memory: 256M
+
+  logspout:
+    image: bekt/logspout-logstash
+    environment:
+      - "ROUTE_URIS=logstash+tcp://localhost:50005"
+      - "LOGSPOUT=ignore"
+      - "HTTP_PORT=55444"
+      - "DOCKER_LABELS=on"
+    volumes:
+      - /etc/hostname:/etc/host_hostname:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - host-net
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+networks:
+  host-net:
+    external:
+      name: "host"
+  net:
+    driver: overlay
+    attachable: true
+configs:
+  logstash_config:
+    file: logstash.yml
+  logstash_pipeline:
+    file: logstash.pipeline
