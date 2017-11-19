@@ -176,7 +176,7 @@ services:
           memory: 1G
 
   logspout:
-    image: stefanprodan/swarm-logspout-logstash
+    image: stefanprodan/swarm-logspout-logstash:3.2.3
     environment:
       - "ROUTE_URIS=logstash+tcp://localhost:50005"
       - "LOGSPOUT=ignore"
@@ -201,7 +201,7 @@ services:
           memory: 128M
 
   curator:
-    image: stefanprodan/es-curator-cron
+    image: stefanprodan/es-curator-cron:5.4.0
     environment:
       - "PERIOD=daily"
       - "KEEP_DAYS=45"
