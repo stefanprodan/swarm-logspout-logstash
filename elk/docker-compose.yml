@@ -202,7 +202,11 @@ services:
 
   curator:
     image: stefanprodan/es-curator-cron
-    command: "--host 10.156.0.5 --port 9200 delete_indices --ignore_empty_list --filter_list \'[{\"filtertype\":\"age\",\"source\":\"name\",\"direction\":\"older\",\"unit\":\"days\",\"unit_count\":1,\"timestring\": \"%Y.%m.%d\"},{\"filtertype\":\"pattern\",\"kind\":\"prefix\",\"value\":\"logstash\"}]\'"
+    environment:
+      - "PERIOD=daily"
+      - "KEEP_DAYS=45"
+      - "INDEX_PREFIX=logstash"
+    command: "--host 10.156.0.5 --port 9200"
     networks:
       - net
     deploy:
@@ -212,12 +216,36 @@ services:
         window: 120s
       resources:
         limits:
-          memory: 1024M
+          memory: 512M
         reservations:
           memory: 64M
       placement:
         constraints:
           - 'node.hostname==swarm-worker-3'
+
+  exporter:
+    image: braedon/prometheus-es-exporter:0.4.3
+    configs:
+      - source: exporter_config
+        target: /usr/src/app/exporter.cfg
+    command: "-e 10.156.0.5"
+    networks:
+      - net
+    ports:
+      - 9206:9206
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        window: 120s
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 64M
+      placement:
+        constraints:
+          - 'node.hostname==swarm-manager-1'
 
 networks:
   host-net:
@@ -226,8 +254,11 @@ networks:
   net:
     driver: overlay
     attachable: true
+
 configs:
   logstash_config:
     file: logstash.yml
   logstash_pipeline:
     file: logstash.pipeline
+  exporter_config:
+    file: exporter.cfg
